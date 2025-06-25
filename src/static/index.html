@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时聊天室</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            padding: 40px;
+        }
+
+        .login-form h2 {
+            margin-bottom: 30px;
+            color: #333;
+            font-size: 28px;
+        }
+
+        .login-form input {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .login-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-btn {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .chat-main {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.own {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+        }
+
+        .message.own .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message:not(.own) .message-content {
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-info {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .message.own .message-info {
+            text-align: right;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .message-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .message-image:hover {
+            transform: scale(1.05);
+        }
+
+        .status-message {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e1e5e9;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .message-input {
+            width: 100%;
+            padding: 12px 50px 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 25px;
+            font-size: 16px;
+            resize: none;
+            max-height: 100px;
+            min-height: 44px;
+            transition: border-color 0.3s ease;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .emoji-btn, .image-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background-color 0.2s ease;
+        }
+
+        .image-btn {
+            right: 40px;
+        }
+
+        .emoji-btn:hover, .image-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        .send-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .emoji-picker {
+            position: absolute;
+            bottom: 60px;
+            right: 10px;
+            background: white;
+            border: 1px solid #e1e5e9;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: none;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+        }
+
+        .emoji-item {
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+
+        .emoji-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .typing-indicator {
+            padding: 10px 20px;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .emoji-picker {
+                right: 0;
+                left: 0;
+                max-width: none;
+            }
+        }
+
+        /* 滚动条样式 */
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div id="header-title">实时聊天室</div>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="login-form" id="loginForm">
+            <h2>加入聊天室</h2>
+            <input type="text" id="usernameInput" placeholder="请输入您的昵称" maxlength="20">
+            <button class="login-btn" onclick="joinChat()">开始聊天</button>
+        </div>
+
+        <!-- 聊天主界面 -->
+        <div class="chat-main" id="chatMain">
+            <div class="messages-container" id="messagesContainer">
+                <!-- 消息将在这里显示 -->
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                有人正在输入...
+            </div>
+
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        class="message-input" 
+                        placeholder="输入消息... (按回车发送)"
+                        rows="1"
+                    ></textarea>
+                    <button class="image-btn" onclick="document.getElementById('imageInput').click()">📷</button>
+                    <button class="emoji-btn" onclick="toggleEmojiPicker()">😊</button>
+                    <input type="file" id="imageInput" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
+                    
+                    <div class="emoji-picker" id="emojiPicker">
+                        <div class="emoji-grid" id="emojiGrid">
+                            <!-- 表情将通过JavaScript加载 -->
+                        </div>
+                    </div>
+                </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let username = '';
+        let isConnected = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadEmojis();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const messageInput = document.getElementById('messageInput');
+            const usernameInput = document.getElementById('usernameInput');
+
+            // 回车发送消息
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // 用户名输入框回车登录
+            usernameInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    joinChat();
+                }
+            });
+
+            // 自动调整输入框高度
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            });
+
+            // 点击其他地方关闭表情选择器
+            document.addEventListener('click', function(e) {
+                const emojiPicker = document.getElementById('emojiPicker');
+                const emojiBtn = document.querySelector('.emoji-btn');
+                if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+                    emojiPicker.style.display = 'none';
+                }
+            });
+        }
+
+        function joinChat() {
+            const usernameInput = document.getElementById('usernameInput');
+            const inputUsername = usernameInput.value.trim();
+            
+            if (!inputUsername) {
+                alert('请输入昵称');
+                return;
+            }
+
+            username = inputUsername;
+            
+            // 初始化Socket连接
+            socket = io();
+            
+            socket.on('connect', function() {
+                isConnected = true;
+                console.log('已连接到服务器');
+                
+                // 加入聊天室
+                socket.emit('join', {
+                    username: username,
+                    room: 'general'
+                });
+                
+                // 切换到聊天界面
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('chatMain').style.display = 'flex';
+                document.getElementById('header-title').textContent = `聊天室 - ${username}`;
+                
+                // 聚焦到消息输入框
+                document.getElementById('messageInput').focus();
+            });
+
+            socket.on('disconnect', function() {
+                isConnected = false;
+                console.log('与服务器断开连接');
+                addStatusMessage('与服务器断开连接');
+            });
+
+            socket.on('status', function(data) {
+                addStatusMessage(data.msg);
+            });
+
+            socket.on('message', function(data) {
+                addMessage(data);
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message || !isConnected) {
+                return;
+            }
+
+            const messageData = {
+                username: username,
+                message: message,
+                timestamp: new Date().toLocaleTimeString(),
+                type: 'text',
+                room: 'general'
+            };
+
+            socket.emit('message', messageData);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+        }
+
+        function addMessage(data) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${data.username === username ? 'own' : ''}`;
+            
+            let messageContent = '';
+            if (data.type === 'image') {
+                messageContent = `
+                    <div class="message-info">${data.username} - ${data.timestamp}</div>
+                    <img src="${data.message}" alt="图片" class="message-image" onclick="openImageModal('${data.message}')">
+                `;
+            } else {
+                messageContent = `
+                    <div class="message-info">${data.username} - ${data.timestamp}</div>
+                    <div>${escapeHtml(data.message)}</div>
+                `;
+            }
+            
+            messageDiv.innerHTML = `<div class="message-content">${messageContent}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function addStatusMessage(message) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status-message';
+            statusDiv.textContent = message;
+            messagesContainer.appendChild(statusDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function loadEmojis() {
+            fetch('/api/emojis')
+                .then(response => response.json())
+                .then(data => {
+                    const emojiGrid = document.getElementById('emojiGrid');
+                    data.emojis.forEach(emoji => {
+                        const emojiItem = document.createElement('div');
+                        emojiItem.className = 'emoji-item';
+                        emojiItem.textContent = emoji;
+                        emojiItem.onclick = () => insertEmoji(emoji);
+                        emojiGrid.appendChild(emojiItem);
+                    });
+                })
+                .catch(error => console.error('加载表情失败:', error));
+        }
+
+        function toggleEmojiPicker() {
+            const emojiPicker = document.getElementById('emojiPicker');
+            emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function insertEmoji(emoji) {
+            const messageInput = document.getElementById('messageInput');
+            const cursorPos = messageInput.selectionStart;
+            const textBefore = messageInput.value.substring(0, cursorPos);
+            const textAfter = messageInput.value.substring(messageInput.selectionEnd);
+            
+            messageInput.value = textBefore + emoji + textAfter;
+            messageInput.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
+            messageInput.focus();
+            
+            document.getElementById('emojiPicker').style.display = 'none';
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 检查文件大小 (限制为5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('图片大小不能超过5MB');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const messageData = {
+                        username: username,
+                        message: data.url,
+                        timestamp: new Date().toLocaleTimeString(),
+                        type: 'image',
+                        room: 'general'
+                    };
+                    socket.emit('message', messageData);
+                } else {
+                    alert('图片上传失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('上传错误:', error);
+                alert('图片上传失败');
+            });
+
+            // 清空文件输入
+            event.target.value = '';
+        }
+
+        function openImageModal(imageSrc) {
+            window.open(imageSrc, '_blank');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+
