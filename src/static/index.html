@@ -20,6 +20,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
 
         .chat-container {
@@ -32,6 +33,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         .chat-header {
@@ -41,6 +43,7 @@
             text-align: center;
             font-size: 24px;
             font-weight: bold;
+            flex-shrink: 0;
         }
 
         .login-form {
@@ -96,6 +99,8 @@
             display: none;
             flex: 1;
             flex-direction: column;
+            height: 100%;
+            min-height: 0;
         }
 
         .messages-container {
@@ -103,6 +108,7 @@
             padding: 20px;
             overflow-y: auto;
             background: #f8f9fa;
+            min-height: 0;
         }
 
         .message {
@@ -165,6 +171,16 @@
             font-size: 14px;
         }
 
+        .typing-indicator {
+            padding: 10px 20px;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
+            background: #f8f9fa;
+            border-top: 1px solid #e1e5e9;
+            flex-shrink: 0;
+        }
+
         .input-container {
             padding: 20px;
             background: white;
@@ -172,6 +188,8 @@
             display: flex;
             gap: 10px;
             align-items: flex-end;
+            flex-shrink: 0;
+            position: relative;
         }
 
         .input-wrapper {
@@ -253,6 +271,7 @@
             max-width: 300px;
             max-height: 200px;
             overflow-y: auto;
+            z-index: 1000;
         }
 
         .emoji-grid {
@@ -277,14 +296,11 @@
             display: none;
         }
 
-        .typing-indicator {
-            padding: 10px 20px;
-            color: #666;
-            font-style: italic;
-            font-size: 14px;
-        }
-
         @media (max-width: 768px) {
+            body {
+                overflow: auto;
+            }
+
             .chat-container {
                 width: 100%;
                 height: 100vh;
