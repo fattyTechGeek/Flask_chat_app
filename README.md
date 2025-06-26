@@ -1,7 +1,7 @@
 # Flask 实时聊天室
 
 一个基于 Python Flask 框架和 Socket.IO 实现的现代化实时聊天应用，支持发送文字、图片、表情等多种消息类型。
-
+### demo:http://47.103.20.195:5000/
 ## 功能特性
 
 - ✨ **实时消息传输** - 基于 Socket.IO 的实时双向通信
@@ -58,7 +58,7 @@ flask-chat-app/
 
 1. **克隆项目**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/fattyTechGeek/Flask_chat_app.git
    cd flask-chat-app
    ```
 
